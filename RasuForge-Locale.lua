@@ -55,23 +55,35 @@ end
 ---@param language ?LocaleString
 ---@return table<string, string>
 function RFLocaleInstance:GetLocale(language)
-    language = language or (self._activeLocale or GetLocale())
+    local locales = {}
+    setmetatable(locales, {
+        __index = function (_, key)
+            language = self:GetValidLanguage(language)
 
-    if self:HasLocale(language) then
-        return self._locales[language]
-    elseif self:HasLocale(self:GetFallback()) then
-        return self._locales[self:GetFallback()]
-    end
-    return self._locales["enUS"]
+            return self:GetString(key, language)
+        end
+    })
+    return locales
+end
+
+--- Returns the next valid language for the specified language.
+---@param language ?LocaleString
+---@return LocaleString
+function RFLocaleInstance:GetValidLanguage(language)
+    language = language or (self:GetActive() or GetLocale())
+    language = self:HasLocale(language) and language
+        or self:HasLocale(self:GetFallback()) and self:GetFallback()
+        or "enUS"
+    return language
 end
 
 --- Returns the string for the specified key and language.
 ---@param key string
----@param language LocaleString
+---@param language ?LocaleString
 ---@return string
 function RFLocaleInstance:GetString(key, language)
     self:GetAddon():Assert(type(key) =="string", "Key must be a string")
-    local locales = self:GetLocale(language)
+    local locales = self._locales[self:GetValidLanguage(language)]
     if locales[key] then
         return locales[key]
     end
